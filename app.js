@@ -1,59 +1,73 @@
-var fs = require('fs'),
-    EventEmitter = require('events').EventEmitter,
-    tar = require('tar'),
-    moment = require('moment'),
-    source = process.env.envA,
-    destination = process.env.envB,
-    archiveName = process.env.envArc,
-    searchParameter = process.env.env1;
+var fs = require('fs'), // access the file system.
+    tar = require('tar'), // archiving tools.
+    moment = require('moment'),  // date / time tools.
+    source = process.env.envA, // environment variable defining the source directory.
+    destination = process.env.envB, // environment variable defining the destination directory.
+    archiveName = process.env.envArc, // environment variable defining the static part of the TAR file's name.
+    searchParameter = process.env.env1, // environment variable defining a file search parameter.
+    date = moment().format('YYYYMMDD'), // create a date object for file date comparison and the archive file name.
+    fileList = [], // create an empty array to hold relevant file names.
+    slack = require('./slack.js'); // import Slack notification functionality.
 
-// Change this process's working directory/
+// Change working directory the process is running in.   
 process.chdir(source);
 
-// Search for the 'LARE*' files.
+// Read the files within that directory.
 fs.readdir(source, function (err, files) {
     // If there is an error display that error.
-    if (err) {
-        console.log('>>> File System Error: ' + err);
-    }
-    // Create a variable to log whether there were matched files.
-    var writeTar = [];
-    // Create a date object for file date comparison and the archive file name.
-    var date = moment().format('YYYYMMDD');
-    var fileList = [];
-    
+    if (err) console.log('>>> File System Error: ' + err);
+
     // Loop through each file that is found...
-    files.forEach(function (item) {
-        // ...if the current file's name matches the search parameter...
-        if (item.match(searchParameter)) {
-            // ...and it's modified property is equal to today...
-            fs.stat(item, function (err, stats) {
-                if (err) {
-                    console.log('>>> File Attributes Error: ' + err);
-                }
-                //console.log('>>> Date: ' + date);
-                //console.log('>>> FIle name: ' + item);
+    checkFilesPromise(files).then(function (response) {
+        console.log('>>> File(s) detected. Starting archiveFilesPromise.');
+        
+        // Archive any relevant files.
+        archiveFilesPromise(fileList).then(function (response) {
+            console.log('>>> TAR file written.');
+            
+            // Send a Slack notification when complete.
+            slack('TAR file written.', 'good', response);
+        }, function (error) {
+            console.log('>>> archiveFilesPromise error: ' + error);
+            slack('archiveFilesPromise error:' + error, 'Warning', error);
+        });
+    }, function (error) {
+        console.log('>>> CheckFilesPromise error ' + error);
+        slack('CheckFilesPromise error: ' + error, 'Warning', error);
+    });
+});
+
+var checkFilesPromise = function (files) {
+    return new Promise(function (resolve, reject) {
+        files.forEach(function (item) {
+            // ...check it matches the search parameter...
+            if (item.match(searchParameter)) {
+                var stats = fs.statSync(item);
                 var fileDate = moment(stats.mtime).format('YYYYMMDD');
-                //console.log('>>> File Date: ' + fileDate);
-                
+        
+                // ...and current date e.g. today's date.
                 if (fileDate === date) {
-                    // ...add to an array of file names.
+                    // Add file to an array of file names.
+                    console.log('>>> Date match successful, pushing: ' + item);
                     fileList.push(item);
-                    console.log('>>> Date match successful: ' + item);
-                    // ...update writeTar variable.
-                    writeTar.push(item);
-                    console.log(writeTar);
+                    resolve('Success');
                 } else {
-                    console.log('Date match not present.');
+                    reject('Failure');
                 }
-            });
+            }
+        });
+    });
+};
+
+var archiveFilesPromise = function (list) {
+    return new Promise(function (resolve, reject) {
+        
+        if (list.length > 0) {
+            // Tar the files in the array to another directory.
+            tar.c({}, [list[0], list[1]]).pipe(fs.createWriteStream(destination + date + archiveName));
+            resolve('Success');
+        } else {
+            reject('Failure');
         }
     });
-    console.log('>>> WriteTar Length: ' + writeTar.length);
-    if (writeTar.length > 0) {
-        // Tar the files in the array to another directory.
-        tar.c({}, [fileList[0], fileList[1]]).pipe(fs.createWriteStream(destination + archiveName));
-    } else {
-        //process.exit(0);
-    }
-});
+};
