@@ -33,11 +33,11 @@ fs.readdir(source, function (err, files) {
             nodemailer('TAR file written.');
         }, function (error) {
             console.log('>>> archiveFilesPromise error: ' + error);
-            slack('archiveFilesPromise error:' + error, 'Warning', error);
+            slack('Archive Files Promise', 'warning', error);
         });
     }, function (error) {
         console.log('>>> CheckFilesPromise error ' + error);
-        slack('CheckFilesPromise error: ' + error, 'Warning', error);
+        slack('Check Files Promise', 'warning', error);
     });
 });
 
@@ -56,7 +56,7 @@ var checkFilesPromise = function (files) {
                     fileList.push(item);
                     resolve('Success');
                 } else {
-                    reject('Failure');
+                    reject('No files today.');
                 }
             }
         });
@@ -71,7 +71,7 @@ var archiveFilesPromise = function (list) {
             tar.c({}, [list[0], list[1]]).pipe(fs.createWriteStream(destination + date + archiveName));
             resolve('Success');
         } else {
-            reject('Failure');
+            reject('No files to tarball.');
         }
     });
 };
