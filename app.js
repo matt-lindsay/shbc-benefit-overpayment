@@ -7,8 +7,8 @@ var fs = require('fs'), // access the file system.
     searchParameter = process.env.env1, // environment variable defining a file search parameter.
     date = moment().format('YYYYMMDD'), // create a date object for file date comparison and the archive file name.
     fileList = [], // create an empty array to hold relevant file names.
-    slack = require('./slack.js'); // import Slack notification functionality.
-    //nodemailer = require('./nodemailer.js');
+    slack = require('./slack.js'), // import Slack notification functionality.
+    nodemailer = require('./nodemailer.js');
 
 // Change working directory the process is running in.   
 process.chdir(source);
@@ -30,22 +30,24 @@ fs.readdir(source, function (err, files) {
             slack('Archive Files Promise', 'good', 'TAR file written.');
             
             // Send an SMTP notification to the process recipients.
-            //nodemailer('TAR file written.');
+            nodemailer('TAR file written.');
         }, function (error) {
             console.log('>>> archiveFilesPromise error: ' + error);
-            slack('Archive Files Promise', 'warning', error);
+            slack('Archive Files Promise', 'warning', error.toString());
         });
     }, function (error) {
         console.log('>>> CheckFilesPromise error ' + error);
-        slack('Check Files Promise', 'warning', error);
+        slack('Check Files Promise', 'warning', error.toString());
     });
 });
 
 var checkFilesPromise = function (files) {
     return new Promise(function (resolve, reject) {
-        if (files.length === 1) {
-            var item = files[0];
-             if (item.match(searchParameter)) {
+        
+        files.forEach(function (item) {
+            console.log(item);
+            // ...check it matches the search parameter...
+            if (item.match(searchParameter)) {
                 var stats = fs.statSync(item);
                 var fileDate = moment(stats.mtime).format('YYYYMMDD');
         
@@ -54,42 +56,28 @@ var checkFilesPromise = function (files) {
                     // Add file to an array of file names.
                     console.log('>>> Date match successful, pushing: ' + item);
                     fileList.push(item);
-                    resolve('Success');
+                    //resolve('Success');
                 } else {
-                    reject('No files today.');
+                    //reject('No files today.');
                 }
             }
+        });
+        if (fileList.length >= 1) {
+            resolve('Success');
         } else {
-            files.forEach(function (item) {
-                console.log(item);
-                // ...check it matches the search parameter...
-                if (item.match(searchParameter)) {
-                    var stats = fs.statSync(item);
-                    var fileDate = moment(stats.mtime).format('YYYYMMDD');
-            
-                    // ...and current date e.g. today's date.
-                    if (fileDate === date) {
-                        // Add file to an array of file names.
-                        console.log('>>> Date match successful, pushing: ' + item);
-                        fileList.push(item);
-                        resolve('Success');
-                    } else {
-                        reject('No files today.');
-                    }
-                }
-            });
+            reject('No files today.');
         }
-        // Resolve , Reject here.
     });
 };
 
 var archiveFilesPromise = function (list) {
     return new Promise(function (resolve, reject) {
         
-        if (list.length > 0) {
+        if (list.length === 1) {
             // Tar the files in the array to another directory.
-            tar.c({}, [list[0], list[1]]).pipe(fs.createWriteStream(destination + date + archiveName));
-            resolve('Success');
+            tar.c({}, [list[0]]).pipe(fs.createWriteStream(destination + date + archiveName)).then(resolve('Success'));
+        } else if ( list.length === 2) {
+            tar.c({}, [list[0], list[1]]).pipe(fs.createWriteStream(destination + date + archiveName)).then(resolve('Success'));
         } else {
             reject('No files to tarball.');
         }
