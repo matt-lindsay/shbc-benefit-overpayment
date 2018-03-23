@@ -45,13 +45,7 @@ fs.readdir(source, function (err, files) {
 
 var checkFilesPromise = function (files) {
     return new Promise(function (resolve, reject) {
-<<<<<<< HEAD
         files.forEach(function (item) {
-=======
-        
-        files.forEach(function (item) {
-            console.log(item);
->>>>>>> b0ca8733cb9d24cbefffa3612f91c229c6ec7e3d
             // ...check it matches the search parameter...
             if (item.match(searchParameter)) {
                 var stats = fs.statSync(item);
