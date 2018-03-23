@@ -57,9 +57,6 @@ typings/
 # dotenv environment variables file
 .env
 
-# package json lock
-package-lock.json
-
 # Testing directories
 a/
 b/

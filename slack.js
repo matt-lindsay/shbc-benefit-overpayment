@@ -1,6 +1,8 @@
+'use strict';
+
 var Slack = require('node-slackr');
 
-module.exports = function (message, color, title) {
+module.exports = function(message, color, title) {
     var slack = new Slack(process.env.slack);
     //var data = JSON.stringify(message);
     var messages = {};
@@ -15,14 +17,14 @@ module.exports = function (message, color, title) {
                 fields: [
                     {
                         title: title
-                    }
+                      }
                 ],
                 text: message
-            }
+              }
         ]
-    };
-    slack.notify(messages, function (err, result) {
+      };
+    slack.notify(messages, function(err, result) {
         if (err) console.log('>>> Slack errors: ' + err + '. ');
         console.log('>>> Slack notification: ' + result + '.');
-    });
-};
+      });
+  };
