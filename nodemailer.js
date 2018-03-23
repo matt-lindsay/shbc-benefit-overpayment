@@ -4,13 +4,17 @@ module.exports = function (message) {
     let transporter = nodemailer.createTransport({
         host: process.env.smtpHost,
         port: process.env.smtpPort,
-        secure: true,
+        secure: false,
         auth: {
             user: process.env.smtpUser,
             pass: process.env.smtpPass
+        },
+        tls: {
+            ciphers: 'SSLv3'
+            //rejectUnauthorized: false
         }
     });
-    
+
     let mailOptions = {
         from: process.env.smtpFrom,
         to: process.env.smtpTo,
